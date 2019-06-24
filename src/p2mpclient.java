@@ -16,10 +16,10 @@ import java.util.Arrays;
 public class p2mpclient {
 	
 	private static BufferedReader reader;
+	private static int sequenceNum = 0;
 	
 	public static void main(String[] args) throws IOException {
 		
-		int mss = 500;
 		ArrayList<String> servers = new ArrayList<>();
 		
 		// Get command line arguments
@@ -27,6 +27,8 @@ public class p2mpclient {
 		// get file name
 		// get MSS (max segment size)
 		
+		// mss and filename are hardcoded below for now
+		int mss = 512;
 		String workingDir = System.getProperty("user.dir");
 		String filename = "data_small.txt";
 		String filepath = workingDir + System.getProperty("file.separator") + filename;
@@ -41,14 +43,15 @@ public class p2mpclient {
 		boolean endOfFile = false;
 		
 		try {
-			
 			while (!endOfFile) {
 				char[] buffer = new char[mss];
 				int numBytesRead = reader.read(buffer, 0, mss);
 				
-				if (numBytesRead > -1) {
+				if (numBytesRead == mss) {
 					
 					
+					
+				} else if (numBytesRead > -1) {
 					
 				} else {
 					endOfFile = true;
@@ -62,6 +65,23 @@ public class p2mpclient {
 		} finally {
 			reader.close();
 		}
+		
+	}
+	
+	private String getSegment(char[] data) {
+		String sequence = Integer.toBinaryString(sequenceNum);
+		String dataPacket = "0101010101010101";
+		
+		
+	}
+	
+	/*
+	 * Computes the 16-bit checksum
+	 */
+	private String getChecksum(char[] data) {
+		
+		// TODO is it safe to assume that MSS is a power of 2 and therefore divisible by 16?
+		
 		
 	}
 	
