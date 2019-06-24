@@ -1,11 +1,8 @@
-package client;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * Reads data from file specified in command line
@@ -50,8 +47,8 @@ public class p2mpclient {
 				if (numBytesRead == mss) {
 					
 					
-					
 				} else if (numBytesRead > -1) {
+					
 					
 				} else {
 					endOfFile = true;
@@ -68,10 +65,13 @@ public class p2mpclient {
 		
 	}
 	
+	/*
+	 * Prepares the segment to be sent to servers
+	 */
 	private String getSegment(char[] data) {
 		String sequence = Integer.toBinaryString(sequenceNum);
+		String checksum = getChecksum(data);
 		String dataPacket = "0101010101010101";
-		
 		
 	}
 	
@@ -79,7 +79,6 @@ public class p2mpclient {
 	 * Computes the 16-bit checksum
 	 */
 	private String getChecksum(char[] data) {
-		
 		// TODO is it safe to assume that MSS is a power of 2 and therefore divisible by 16?
 		
 		
