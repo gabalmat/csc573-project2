@@ -1,5 +1,21 @@
 # CSC 573 Project 2
 
+### Table of Contents  
+- [Client](#client)
+    * [Command Line Args](#client-command-line-inputs)
+    * [Overview](#overview)
+    * [Segment Handling](#segment-handling)
+    * [Segment Timeout](#segment-timeout)
+    * [Segment Header](#client-segment-header)
+- [Server](#server)
+    * [Server Command Line Inputs](#server-command-line-inputs)
+    * [Segment Handling](#server-segment-handling)
+    * [Server Segment Header (ACK)](#server-segment-header-ack)
+- [Tasks](#tasks)
+    * [Task 1](#task-1)
+    * [Task 2](#task-2)
+    * [Task 3](#task-3)
+    
 
 ## Client
 
@@ -71,7 +87,7 @@ Packet loss, sequence number = X
 - file name for received data
 - probability number **p, 0 < p < 1** representing the probability that a packet is lost
 
-#### Segment Handling
+#### Server Segment Handling
 When the server receives a data packet **(segment)** from the client... 
 1. the server will generate a random number **r in (0,1)**
     - if r ≤ p, then this received packet is discarded and no other action is taken 
