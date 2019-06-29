@@ -88,7 +88,7 @@ Packet loss, sequence number = X
 - probability number **p, 0 < p < 1** representing the probability that a packet is lost
 
 #### Server Segment Handling
-When the server receives a data packet **(segment)** from the client... 
+When the server receives a data packet **(multiple segments!)** from the client... 
 1. the server will generate a random number **r in (0,1)**
     - if r ≤ p, then this received packet is discarded and no other action is taken 
     - if r > p, the packet is accepted and processed according to the Stop-and-Wait rules
