@@ -7,24 +7,27 @@ public class p2mpserver implements Runnable {
     public static void main(String[] args) {
         int portNumber; String fileName; float p;
 
-        // parse inputs and verify
-        if (args.length != 3) {
-            _printError("Missing required args: port#, file-name, p");
-            return;
-        }
-
         try {
-            fileName = args[1];
+            // parse inputs and verify
+            if (args.length != 3) {
+                _printError("Missing required args: port#, file-name, p");
+                return;
+            }
 
             portNumber = Integer.parseInt(args[0]);
             if(portNumber != 7735) {
                 throw new IllegalArgumentException("Port number must be 7735");
             }
 
+            fileName = args[1];
+            if(fileName.isEmpty()) {
+                throw new IllegalArgumentException("File name cannot be empty");
+            }
+
             p = Float.parseFloat(args[2]);
-            if (p < 0 || p > 1) {
+            if (p <= 0 || p >= 1) {
                 throw new IllegalArgumentException("The probability value p" +
-                        " must be between 0 < p <= 1");
+                        " must be between 0 < p < 1");
             }
         }
         catch (Exception e) {
