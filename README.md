@@ -20,6 +20,7 @@ Timeout, sequence number = Y
 - server-i is the host name where the i-th server (receiver) runs, i = 1, 2, 3
 - server-port# is the port number of the server (i.e., 7735)
 
+#### Overview
 - rdt_send() provides data from the file on a byte basis
 - implements Stop-and-Wait (SAW) protocol
 - receiving data from rdt_send()
