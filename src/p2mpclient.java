@@ -72,7 +72,8 @@ public class p2mpclient {
 		String sequence = Integer.toBinaryString(sequenceNum);
 		String checksum = getChecksum(data);
 		String dataPacket = "0101010101010101";
-		
+
+		return "";
 	}
 	
 	/*
@@ -81,7 +82,7 @@ public class p2mpclient {
 	private String getChecksum(char[] data) {
 		// TODO is it safe to assume that MSS is a power of 2 and therefore divisible by 16?
 		
-		
+		return "";
 	}
 	
 }
