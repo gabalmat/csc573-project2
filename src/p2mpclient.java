@@ -1,8 +1,9 @@
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Reads data from file specified in command line
@@ -12,7 +13,6 @@ import java.util.ArrayList;
  */
 public class p2mpclient {
 	
-	private static BufferedReader reader;
 	private static int sequenceNum = 0;
 	
 	public static void main(String[] args) throws IOException {
@@ -24,65 +24,89 @@ public class p2mpclient {
 		// get file name
 		// get MSS (max segment size)
 		
-		// mss and filename are hardcoded below for now
+		// mss and filename are hard-coded below for now
 		int mss = 512;
 		String workingDir = System.getProperty("user.dir");
 		String filename = "data_small.txt";
 		String filepath = workingDir + System.getProperty("file.separator") + filename;
+		File file = new File(filepath);
 		
-		reader = new BufferedReader(new FileReader(filepath));
-		
-		// Call rdt_send to send segments to servers
-		rdt_send(mss);
-	}
-	
-	private static void rdt_send(int mss) throws IOException {
-		boolean endOfFile = false;
+		byte[] fileBytes = Files.readAllBytes(file.toPath());
+		int offset = 0;
 		
 		try {
-			while (!endOfFile) {
-				char[] buffer = new char[mss];
-				int numBytesRead = reader.read(buffer, 0, mss);
+			while (offset < fileBytes.length) {
+				long bytesRemaining = fileBytes.length - offset;
+				int dataLen = (int) Math.min(mss, bytesRemaining);
+				byte[] data = new byte[dataLen];
 				
-				if (numBytesRead == mss) {
-					
-					
-				} else if (numBytesRead > -1) {
-					
-					
-				} else {
-					endOfFile = true;
-				}
+				data = Arrays.copyOfRange(fileBytes, offset, offset + dataLen);
+				
+				rdt_send(data);
+				
+				offset += dataLen;
 			}
-			
 		} catch (IOException e) {
 			System.out.println("Error reading data from file");
 			e.printStackTrace();
-			
-		} finally {
-			reader.close();
+		}
+	}
+	
+	private static void rdt_send(byte[] data) throws IOException {
+		String segment = getHeader(data);
+		
+		for (byte b : data) {
+			segment += b;
 		}
 		
+		System.out.println(segment);
 	}
 	
 	/*
-	 * Prepares the segment to be sent to servers
+	 * Prepares the header for the segment to be sent to servers
 	 */
-	private String getSegment(char[] data) {
-		String sequence = Integer.toBinaryString(sequenceNum);
+	private static String getHeader(byte[] data) {
+		// Pad the sequence number string with leading zeros so that it contains 16 characters
+		String sequence = String.format("%16s",  Integer.toBinaryString(sequenceNum)).replace(' ', '0');
 		String checksum = getChecksum(data);
 		String dataPacket = "0101010101010101";
-
-		return "";
+		
+		sequenceNum++;
+		
+		return sequence + checksum + dataPacket;
 	}
 	
 	/*
-	 * Computes the 16-bit checksum
+	 * Computes the 16-bit checksum and returns it as a String
 	 */
-	private String getChecksum(char[] data) {
-		// TODO is it safe to assume that MSS is a power of 2 and therefore divisible by 16?
+	private static String getChecksum(byte[] data) {
+		long sum = 0;
 		
-		return "";
+		for (int i = 0; i < data.length; i+=2) {
+			if (i+1 < data.length) {
+				sum += bytesToShort(data[i], data[i+1]);
+			} else {
+				sum += bytesToShort(data[i], (byte)0);
+			}
+		}
+		
+		while ((sum >> Short.SIZE) != 0) {
+			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+		}
+		
+		sum = ~sum;
+		
+		return Integer.toBinaryString((int)sum).substring(16);
+	}
+	
+	/*
+	 * Takes 2 bytes and concatenates them to create a 16-bit word
+	 */
+	private static short bytesToShort(byte a, byte b) {
+		short sh = (short) a;
+		sh <<= 8;
+		
+		return (short)(sh | b);
 	}
 	
 }
