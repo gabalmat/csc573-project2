@@ -8,7 +8,7 @@
     * [Segment Timeout](#segment-timeout)
     * [Segment Header](#client-segment-header)
 - [Server](#server)
-    * [Server Command Line Inputs](#server-command-line-inputs)
+    * [Command Line Args](#server-command-line-inputs)
     * [Segment Handling](#server-segment-handling)
     * [Server Segment Header (ACK)](#server-segment-header-ack)
 - [Tasks](#tasks)
