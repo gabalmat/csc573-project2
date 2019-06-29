@@ -1,7 +1,5 @@
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -15,7 +13,6 @@ import java.util.Arrays;
  */
 public class p2mpclient {
 	
-	//private static BufferedReader reader;
 	private static int sequenceNum = 0;
 	
 	public static void main(String[] args) throws IOException {
@@ -27,7 +24,7 @@ public class p2mpclient {
 		// get file name
 		// get MSS (max segment size)
 		
-		// mss and filename are hardcoded below for now
+		// mss and filename are hard-coded below for now
 		int mss = 512;
 		String workingDir = System.getProperty("user.dir");
 		String filename = "data_small.txt";
@@ -45,7 +42,6 @@ public class p2mpclient {
 				
 				data = Arrays.copyOfRange(fileBytes, offset, offset + dataLen);
 				
-				// Send data to rdt_send()
 				rdt_send(data);
 				
 				offset += dataLen;
@@ -57,23 +53,31 @@ public class p2mpclient {
 	}
 	
 	private static void rdt_send(byte[] data) throws IOException {
+		String segment = getHeader(data);
 		
+		for (byte b : data) {
+			segment += b;
+		}
 		
+		System.out.println(segment);
 	}
 	
 	/*
 	 * Prepares the header for the segment to be sent to servers
 	 */
-	private String getHeader(byte[] data) {
-		String sequence = Integer.toBinaryString(sequenceNum);
+	private static String getHeader(byte[] data) {
+		// Pad the sequence number string with leading zeros so that it contains 16 characters
+		String sequence = String.format("%16s",  Integer.toBinaryString(sequenceNum)).replace(' ', '0');
 		String checksum = getChecksum(data);
 		String dataPacket = "0101010101010101";
+		
+		sequenceNum++;
 		
 		return sequence + checksum + dataPacket;
 	}
 	
 	/*
-	 * Computes the 16-bit checksum
+	 * Computes the 16-bit checksum and returns it as a String
 	 */
 	private static String getChecksum(byte[] data) {
 		long sum = 0;
@@ -92,9 +96,12 @@ public class p2mpclient {
 		
 		sum = ~sum;
 		
-		return String.format("%16s",  Integer.toBinaryString((short)sum).replace(" ", "0"));
+		return Integer.toBinaryString((int)sum).substring(16);
 	}
 	
+	/*
+	 * Takes 2 bytes and concatenates them to create a 16-bit word
+	 */
 	private static short bytesToShort(byte a, byte b) {
 		short sh = (short) a;
 		sh <<= 8;
