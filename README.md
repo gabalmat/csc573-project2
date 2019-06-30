@@ -95,7 +95,7 @@ When the server receives a data packet **(multiple segments!)** from the client.
 2. it computes the checksum and checks it
     - if incorrect the receiver does nothing
     On the client, associated timer for segment sent will expire
-    - **if checksum is correct, move on to step 2**
+    - **if checksum is correct, move on to step 3**
 3. checks whether it is in-sequence,
     - if so, it sends an ACK segment response (using UDP) to the client
     - if not, ACK for the last received in-sequence packet is sent

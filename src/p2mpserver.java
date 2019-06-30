@@ -1,15 +1,18 @@
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
+import java.nio.charset.Charset;
 import java.util.Random;
 
 public class p2mpserver implements Runnable {
+    private static int ACK_HEADER_FIELD_1 = 0x0000;
+    private static int ACK_HEADER_FIELD_2 = 0xAAAA;
+    private static String NEWLINE = "\r\n";
+
     private Integer portNumber;
     private String fileName;
     private Double probOfError;
@@ -72,10 +75,12 @@ public class p2mpserver implements Runnable {
         _printMessage(msg);
 
         this.runProgram = true;
+        createACK(454);
     }
 
     @Override
     public void run() {
+        _printMessage("Listening for connections...");
         this.udpSock = createUDPSocket();
         if(this.udpSock == null) { return; }
 
@@ -86,11 +91,23 @@ public class p2mpserver implements Runnable {
                 DatagramPacket rcvPacket = new DatagramPacket(buffer, buffer.length);
                 udpSock.receive(rcvPacket);
 
-                /* At this point client has no more data to send */
-                //TODO: At this point is buffer data a segment or a packet?
+                /* At this point the buffer is full */
 
                 // process data
-                handleRequest(rcvPacket.getData());
+                int seqNum = processRequest(rcvPacket.getData());
+
+                if(seqNum != -1) {
+                    // create ACK segment
+                    String ack = createACK(seqNum);
+
+                    // create the datagram to encapsulate the ack
+                    // modify data of the packet with the ACK
+                    DatagramPacket sndPacket = rcvPacket;
+                    sndPacket.setData(ack.getBytes());
+
+                    // send ACK segment
+                    udpSock.send(sndPacket);
+                }
 
                 // clear buffer
                 this.buffer = new byte[256];
@@ -105,20 +122,59 @@ public class p2mpserver implements Runnable {
         }
     }
 
-    private void handleRequest(byte[] data) {
+    private int processRequest(byte[] data) {
         _printMessage("The data size received: " + data.length);
 
+        int sequenceNum = getSequenceNumber(data);
+
         // 1. check R value
-        if(!checkR()) { return; }
+        if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-        if(!computeChecksum()) { return; }
+        if(!computeChecksum()) { sequenceNum = -1; }
 
         // 3. check if segment is in-sequence
-        if(!checkSequence()) { return; }
+        if(!checkSequence()) { sequenceNum = -1; }
 
         // 4. all is good. write data to file
         writeToFile(data);
+
+        return sequenceNum;
+    }
+
+    /**
+     * ACK Segment
+     * the 32-bit sequence number that is being ACKed
+     * a 16-bit field that is all zeroes, and
+     * a 16-bit field that has the value **1010101010101010**,
+     * @param seqNum A 32-bit integer (use hex)
+     * @return The segment (string)
+     */
+    private String createACK(int seqNum) {
+
+        // hex for 10101010 is 0xAA and hex for 1010101010101010 is 0xAAAA
+        // can use Integer.valueOf or Integer.parseInt to convert from String
+
+        //  ACK Segment Output Example
+        //
+        //  <32 bit sequence number>
+        //  0000000000000000
+        //  1010101010101010
+        //
+
+        String ackStr = seqNum +
+                NEWLINE +
+                ACK_HEADER_FIELD_1 +
+                NEWLINE +
+                ACK_HEADER_FIELD_2 +
+                NEWLINE;
+        _printMessage("ACK to be sent out:\r\n" + ackStr);
+        return ackStr;
+    }
+
+    private int getSequenceNumber(byte[] data) {
+        // TODO: Implement
+        return -1;
     }
 
     private boolean computeChecksum() {
@@ -165,7 +221,8 @@ public class p2mpserver implements Runnable {
         double r = 0.0;
 
         while(r == 0.0) {
-            r = rand.nextDouble(); // nextFloat() is [0,1)...need (0,1)
+            // nextFloat() is [0,1)...need (0,1)
+            r = rand.nextDouble();
         }
         return r;
     }
@@ -179,6 +236,16 @@ public class p2mpserver implements Runnable {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /*
+     * Takes 2 bytes and concatenates them to create a 16-bit word
+     */
+    private short bytesToShort(byte a, byte b) {
+        short sh = (short) a;
+        sh <<= 8;
+
+        return (short)(sh | b);
     }
 
     private static void _printMessage(String message) {
