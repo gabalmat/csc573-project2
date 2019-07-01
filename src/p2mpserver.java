@@ -1,16 +1,15 @@
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Random;
 
 public class p2mpserver implements Runnable {
     private static int ACK_HEADER_FIELD_1 = 0x0000;
     private static int ACK_HEADER_FIELD_2 = 0xAAAA;
+    private static int ALL_16_ONES = 0xFFFF;
     private static String NEWLINE = "\r\n";
 
     private Integer portNumber;
@@ -19,6 +18,7 @@ public class p2mpserver implements Runnable {
     private boolean runProgram;
     private DatagramSocket udpSock;
     private byte[] buffer = new byte[256]; //TODO: What should buffer size be?
+    private ArrayList<Integer> seqNumbersArray;
 
     public static void main(String[] args) {
         int portNumber; String fileName; double p;
@@ -63,6 +63,8 @@ public class p2mpserver implements Runnable {
         this.portNumber = portNumber;
         this.fileName = fileName;
         this.probOfError = probOfError;
+        this.runProgram = true;
+        this.seqNumbersArray = new ArrayList<Integer>();
 
         String msg = "Command line args are (" +
                 "port #: " +
@@ -74,7 +76,6 @@ public class p2mpserver implements Runnable {
                 ")";
         _printMessage(msg);
 
-        this.runProgram = true;
         createACK(454);
     }
 
@@ -131,10 +132,10 @@ public class p2mpserver implements Runnable {
         if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-        if(!computeChecksum()) { sequenceNum = -1; }
+        if(!verifyChecksum(data)) { sequenceNum = -1; }
 
         // 3. check if segment is in-sequence
-        if(!checkSequence()) { sequenceNum = -1; }
+        if(!checkSequence(data)) { sequenceNum = -1; }
 
         // 4. all is good. write data to file
         writeToFile(data);
@@ -172,19 +173,64 @@ public class p2mpserver implements Runnable {
         return ackStr;
     }
 
-    private int getSequenceNumber(byte[] data) {
-        // TODO: Implement
+    private boolean verifyChecksum(byte[] data) {
+        //TODO: Implement
+        long sum = 0; //64 bits
+        byte[] payload = getPayload(data);
+        short checkSum = getChecksum(data); //16 bits
+
+        // add up the payload
+        for (int i = 0; i < payload.length; i+=2) {
+            if (i+1 < payload.length) {
+                sum += bytesToShort(payload[i], payload[i+1]);
+            } else {
+                sum += bytesToShort(payload[i], (byte)0);
+            }
+        }
+        // add the checksum to payload
+        sum += checkSum;
+
+        // convert long to short?
+        while ((sum >> Short.SIZE) != 0) {
+            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+        }
+
+        _printMessage("The sum should be 16 1s. Is it? "
+                + Integer.toBinaryString((int)sum).substring(16));
+
+        return sum == ALL_16_ONES;
+    }
+
+    private short getChecksum(byte[] data) {
+        //TODO: Implement
         return -1;
     }
 
-    private boolean computeChecksum() {
+    private byte[] getPayload(byte[] data) {
         //TODO: Implement
-        return false;
+        return null;
     }
 
-    private boolean checkSequence() {
-        //TODO: Implement
-        return false;
+    /**
+     * The Client Segment Format
+     * a 32-bit sequence number, starts at 0
+     * a 16-bit checksum of the data part, computed in the same way as the UDP checksum, and
+     * a 16-bit field that has the value 0101010101010101
+     *
+     * Assuming sequence numbers are based on data size sent
+     *
+     * @param data The segment sent from client
+     * @return true if no errors, false if errors
+     */
+    private boolean checkSequence(byte[] data) {
+        int seqNum = getSequenceNumber(data);
+        int mss = getMSSValue(data);
+
+        // get the last in-sequence segment number
+        int size = this.seqNumbersArray.size();
+        int lastSeqNum = this.seqNumbersArray.get(size - 1);
+
+        return (lastSeqNum + mss) == seqNum;
     }
 
     private void writeToFile(byte[] data) {
@@ -204,6 +250,16 @@ public class p2mpserver implements Runnable {
            _printError(e.getMessage());
            e.printStackTrace();
         }
+    }
+
+    private int getSequenceNumber(byte[] data) {
+        // TODO: Implement
+        return -1;
+    }
+
+    private int getMSSValue(byte[] data) {
+        //TODO: Implement
+        return  -1;
     }
 
     private boolean checkR() {
