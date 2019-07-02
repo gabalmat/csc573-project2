@@ -17,7 +17,7 @@ public class p2mpserver implements Runnable {
     private Double probOfError;
     private boolean runProgram;
     private DatagramSocket udpSock;
-    private byte[] buffer = new byte[256]; //TODO: What should buffer size be?
+    private byte[] buffer = new byte[512]; //TODO: What should buffer size be?
     private ArrayList<Integer> seqNumbersArray;
 
     public static void main(String[] args) {
@@ -75,8 +75,6 @@ public class p2mpserver implements Runnable {
                 this.probOfError +
                 ")";
         _printMessage(msg);
-
-        createACK(454);
     }
 
     @Override
@@ -126,16 +124,17 @@ public class p2mpserver implements Runnable {
     private int processRequest(byte[] data) {
         _printMessage("The data size received: " + data.length);
 
-        int sequenceNum = getSequenceNumber(data);
+        char[] dataArray = new String(data).toCharArray();
+        int sequenceNum = getSequenceNumber(dataArray);
 
         // 1. check R value
         if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-        if(!verifyChecksum(data)) { sequenceNum = -1; }
+//        if(!verifyChecksum(data)) { sequenceNum = -1; }
 
         // 3. check if segment is in-sequence
-        if(!checkSequence(data)) { sequenceNum = -1; }
+        if(!checkSequence(data, sequenceNum)) { sequenceNum = -1; }
 
         // 4. all is good. write data to file
         writeToFile(data);
@@ -163,7 +162,7 @@ public class p2mpserver implements Runnable {
         //  1010101010101010
         //
 
-        String ackStr = seqNum +
+        String ackStr = Integer.toHexString(seqNum) +
                 NEWLINE +
                 ACK_HEADER_FIELD_1 +
                 NEWLINE +
@@ -175,40 +174,31 @@ public class p2mpserver implements Runnable {
 
     private boolean verifyChecksum(byte[] data) {
         //TODO: Implement
-        long sum = 0; //64 bits
-        byte[] payload = getPayload(data);
-        short checkSum = getChecksum(data); //16 bits
+//        long sum = 0; //64 bits
+//        byte[] payload = getPayload(data);
+//        short checkSum = getChecksum(data); //16 bits
+//
+//        // add up the payload
+//        for (int i = 0; i < payload.length; i+=2) {
+//            if (i+1 < payload.length) {
+//                sum += bytesToShort(payload[i], payload[i+1]);
+//            } else {
+//                sum += bytesToShort(payload[i], (byte)0);
+//            }
+//        }
+//        // add the checksum to payload
+//        sum += checkSum;
+//
+//        // convert long to short?
+//        while ((sum >> Short.SIZE) != 0) {
+//            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+//        }
+//
+//        _printMessage("The sum should be 16 1s. Is it? "
+//                + Integer.toBinaryString((int)sum).substring(16));
 
-        // add up the payload
-        for (int i = 0; i < payload.length; i+=2) {
-            if (i+1 < payload.length) {
-                sum += bytesToShort(payload[i], payload[i+1]);
-            } else {
-                sum += bytesToShort(payload[i], (byte)0);
-            }
-        }
-        // add the checksum to payload
-        sum += checkSum;
-
-        // convert long to short?
-        while ((sum >> Short.SIZE) != 0) {
-            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-        }
-
-        _printMessage("The sum should be 16 1s. Is it? "
-                + Integer.toBinaryString((int)sum).substring(16));
-
-        return sum == ALL_16_ONES;
-    }
-
-    private short getChecksum(byte[] data) {
-        //TODO: Implement
-        return -1;
-    }
-
-    private byte[] getPayload(byte[] data) {
-        //TODO: Implement
-        return null;
+//        return sum == ALL_16_ONES;
+        return false;
     }
 
     /**
@@ -222,8 +212,7 @@ public class p2mpserver implements Runnable {
      * @param data The segment sent from client
      * @return true if no errors, false if errors
      */
-    private boolean checkSequence(byte[] data) {
-        int seqNum = getSequenceNumber(data);
+    private boolean checkSequence(byte[] data, int seqNum) {
         int mss = getMSSValue(data);
 
         // get the last in-sequence segment number
@@ -252,7 +241,24 @@ public class p2mpserver implements Runnable {
         }
     }
 
-    private int getSequenceNumber(byte[] data) {
+    private short getChecksum(byte[] data) {
+        //TODO: Implement
+        return -1;
+    }
+
+    private byte[] getPayload(byte[] data) {
+        //TODO: Implement
+        return null;
+    }
+
+    private int getSequenceNumber(char[] dataArray) {
+//        char[] seqNum = new char[32];
+//        // 1st 32 digits is the sequence #
+//        for (int i = 0; i < 31; i++) {
+//            seqNum[i] = dataArray[i];
+//        }
+//        var s = new String(seqNum);
+//        var i = Integer.parseInt(s, 2);
         // TODO: Implement
         return -1;
     }
