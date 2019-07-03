@@ -1,6 +1,9 @@
 
 import java.io.File;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +19,8 @@ import java.util.Arrays;
 public class p2mpclient {
 	private static final int NUM_BYTES_IN_HEADER = 8;
 	private static final short DATA_PACKET_VALUE = (short) 0b0101010101010101;
+	private static final int SERVER_PORT_NUMBER = 7735;
+	private static final int SERVER_RESPONSE_BYTES = 8;
 	
 	private static int sequenceNum = 0;
 	private static int mss;
@@ -64,11 +69,23 @@ public class p2mpclient {
 		bb.put(headerBytes);
 		bb.put(data);
 		
-		byte[] test = bb.array();
-		
-		System.out.println("HEY");
+		byte[] segmentBytes = bb.array();
 		
 		// Send bytes here....
+		DatagramSocket datagramSocket = new DatagramSocket();
+		byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
+		DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
+		
+		// Hardcode the receiver address to be localhost for now...
+		InetAddress receiverAddress = InetAddress.getLocalHost();
+		DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
+				receiverAddress, SERVER_PORT_NUMBER);
+		datagramSocket.send(outPacket);
+		
+		// Receive the response from server
+		datagramSocket.receive(responsePacket);
+		
+		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
 	}
 	
 	/*
