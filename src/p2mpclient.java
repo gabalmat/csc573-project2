@@ -114,8 +114,7 @@ public class p2mpclient {
 	}
 	
 	/*
-	 * Computes the 16-bit checksum and returns the ASCII value of each
-	 * character in a byte[] array
+	 * Computes and returns the 16-bit checksum as a short
 	 */
 	private static short getChecksum(byte[] data) {
 		long sum = 0;

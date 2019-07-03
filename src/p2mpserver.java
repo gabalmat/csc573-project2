@@ -14,6 +14,7 @@ public class p2mpserver implements Runnable {
     private static int ALL_16_ONES = 0xFFFF;
     private static String NEWLINE = "\r\n";
     private static int MAX_UDP_BYTES = 65535;
+    private static int NUM_BYTES_IN_HEADER = 8;
 
     private Integer portNumber;
     private String fileName;
@@ -126,18 +127,24 @@ public class p2mpserver implements Runnable {
 
     private int processRequest(byte[] data) {
         _printMessage("The data size received: " + data.length);
+        
+        // Split data into header field portions and data portion
+        byte[] sequenceBytes = Arrays.copyOfRange(data, 0, 4);
+        byte[] checksumBytes = Arrays.copyOfRange(data, 4, 6);
+        byte[] dataBytes = Arrays.copyOfRange(data, NUM_BYTES_IN_HEADER, data.length);
 
         char[] dataArray = new String(data).toCharArray();
         
         // Get the sequence number
-        byte[] seqBytes = Arrays.copyOfRange(data, 0, 4);
-        int sequenceNum = ByteBuffer.wrap(seqBytes).getInt();
+        int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
 
         // 1. check R value
         if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-//        if(!verifyChecksum(data)) { sequenceNum = -1; }
+        short checksum = (short) ByteBuffer.wrap(checksumBytes).getInt();
+        
+        if(!verifyChecksum(dataBytes, checksum)) { sequenceNum = -1; }
 
         // 3. check if segment is in-sequence
         if(!checkSequence(data, sequenceNum)) { sequenceNum = -1; }
@@ -178,8 +185,18 @@ public class p2mpserver implements Runnable {
         return ackStr;
     }
 
-    private boolean verifyChecksum(byte[] data) {
+    private boolean verifyChecksum(byte[] data, short checksum) {
         //TODO: Implement
+    	
+    	short dataSum = getSumOfData(data);
+    	
+    	// Add to checksum and return true if result is 1111111111111111
+    	if ((dataSum + checksum) == Short.MAX_VALUE) {
+    		return true;
+    	}
+    	
+    	return false;
+    	
 //        long sum = 0; //64 bits
 //        byte[] payload = getPayload(data);
 //        short checkSum = getChecksum(data); //16 bits
@@ -204,7 +221,7 @@ public class p2mpserver implements Runnable {
 //                + Integer.toBinaryString((int)sum).substring(16));
 
 //        return sum == ALL_16_ONES;
-        return false;
+        
     }
 
     /**
@@ -322,5 +339,26 @@ public class p2mpserver implements Runnable {
 
     private static void _printError(String message) {
         System.out.println("\r\np2mpServer [Error]: " + message);
+    }
+    
+    private short getSumOfData(byte[] data) {
+    	// Add all 16-bit words in the data
+    	long sum = 0;
+		
+		// Combine every 2 bytes of data into a 16-bit word and add to sum
+		for (int i = 0; i < data.length; i+=2) {
+			if (i+1 < data.length) {
+				sum += bytesToShort(data[i], data[i+1]);
+			} else {
+				sum += bytesToShort(data[i], (byte)0);
+			}
+		}
+		
+		// Wrap any overflow so that we're guaranteed a 16-bit value
+		while ((sum >> Short.SIZE) != 0) {
+			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+		}
+		
+		return (short) sum;
     }
 }
