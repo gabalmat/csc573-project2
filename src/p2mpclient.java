@@ -86,6 +86,8 @@ public class p2mpclient {
 		datagramSocket.receive(responsePacket);
 		
 		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
+		
+		
 	}
 	
 	/*

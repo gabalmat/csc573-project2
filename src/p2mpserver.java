@@ -3,7 +3,9 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 public class p2mpserver implements Runnable {
@@ -11,13 +13,14 @@ public class p2mpserver implements Runnable {
     private static int ACK_HEADER_FIELD_2 = 0xAAAA;
     private static int ALL_16_ONES = 0xFFFF;
     private static String NEWLINE = "\r\n";
+    private static int MAX_UDP_BYTES = 65535;
 
     private Integer portNumber;
     private String fileName;
     private Double probOfError;
     private boolean runProgram;
     private DatagramSocket udpSock;
-    private byte[] buffer = new byte[512]; //TODO: What should buffer size be?
+    private byte[] buffer = new byte[MAX_UDP_BYTES]; //TODO: What should buffer size be?
     private ArrayList<Integer> seqNumbersArray;
 
     public static void main(String[] args) {
@@ -92,8 +95,8 @@ public class p2mpserver implements Runnable {
 
                 /* At this point the buffer is full */
 
-                // process data
-                int seqNum = processRequest(rcvPacket.getData());
+                // process only the bytes sent from client
+                int seqNum = processRequest(Arrays.copyOfRange(rcvPacket.getData(), 0, rcvPacket.getLength()));
 
                 if(seqNum != -1) {
                     // create ACK segment
@@ -125,7 +128,10 @@ public class p2mpserver implements Runnable {
         _printMessage("The data size received: " + data.length);
 
         char[] dataArray = new String(data).toCharArray();
-        int sequenceNum = getSequenceNumber(dataArray);
+        
+        // Get the sequence number
+        byte[] seqBytes = Arrays.copyOfRange(data, 0, 4);
+        int sequenceNum = ByteBuffer.wrap(seqBytes).getInt();
 
         // 1. check R value
         if(!checkR()) { sequenceNum = -1; }
