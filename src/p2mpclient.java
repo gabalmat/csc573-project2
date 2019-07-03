@@ -1,6 +1,8 @@
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,8 +14,11 @@ import java.util.Arrays;
  * 
  */
 public class p2mpclient {
+	private static final int NUM_BYTES_IN_HEADER = 8;
+	private static final short DATA_PACKET_VALUE = (short) 0b0101010101010101;
 	
 	private static int sequenceNum = 0;
+	private static int mss;
 	
 	public static void main(String[] args) throws IOException {
 		
@@ -25,7 +30,7 @@ public class p2mpclient {
 		// get MSS (max segment size)
 		
 		// mss and filename are hard-coded below for now
-		int mss = 512;
+		mss = 512;
 		String workingDir = System.getProperty("user.dir");
 		String filename = "data_small.txt";
 		String filepath = workingDir + System.getProperty("file.separator") + filename;
@@ -53,35 +58,50 @@ public class p2mpclient {
 	}
 	
 	private static void rdt_send(byte[] data) throws IOException {
-		String segment = getHeader(data);
+		ByteBuffer bb = ByteBuffer.allocate(NUM_BYTES_IN_HEADER + data.length);
 		
-		for (byte b : data) {
-			segment += b;
-		}
+		byte[] headerBytes = getHeader(data);
+		bb.put(headerBytes);
+		bb.put(data);
 		
-		System.out.println(segment);
+		byte[] test = bb.array();
+		
+		System.out.println("HEY");
+		
+		// Send bytes here....
 	}
 	
 	/*
-	 * Prepares the header for the segment to be sent to servers
+	 * Gets the header as an 8 element byte[] array
 	 */
-	private static String getHeader(byte[] data) {
-		// Pad the sequence number string with leading zeros so that it contains 16 characters
-		String sequence = String.format("%16s",  Integer.toBinaryString(sequenceNum)).replace(' ', '0');
-		String checksum = getChecksum(data);
-		String dataPacket = "0101010101010101";
+	private static byte[] getHeader(byte[] data) {
 		
-		sequenceNum++;
+		// Create a ByteBuffer for storing the bytes
+		ByteBuffer bb = ByteBuffer.allocate(NUM_BYTES_IN_HEADER);
 		
-		return sequence + checksum + dataPacket;
+		// Add the 32-bit sequence number
+		bb.putInt(sequenceNum);
+		
+		// Add the 16-bit checksum
+		short checksum = getChecksum(data);
+		bb.putShort(checksum);
+		
+		// Add the 16-bit data packet header value
+		bb.putShort(DATA_PACKET_VALUE);
+		
+		sequenceNum += data.length;
+		
+		return bb.array();
 	}
 	
 	/*
-	 * Computes the 16-bit checksum and returns it as a String
+	 * Computes the 16-bit checksum and returns the ASCII value of each
+	 * character in a byte[] array
 	 */
-	private static String getChecksum(byte[] data) {
+	private static short getChecksum(byte[] data) {
 		long sum = 0;
 		
+		// Combine every 2 bytes of data into a 16-bit word and add to sum
 		for (int i = 0; i < data.length; i+=2) {
 			if (i+1 < data.length) {
 				sum += bytesToShort(data[i], data[i+1]);
@@ -90,13 +110,15 @@ public class p2mpclient {
 			}
 		}
 		
+		// Wrap any overflow so that we're guaranteed a 16-bit value
 		while ((sum >> Short.SIZE) != 0) {
 			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
 		}
 		
+		// Take the one's complement
 		sum = ~sum;
 		
-		return Integer.toBinaryString((int)sum).substring(16);
+		return (short) sum;
 	}
 	
 	/*
@@ -108,5 +130,4 @@ public class p2mpclient {
 		
 		return (short)(sh | b);
 	}
-	
 }
