@@ -155,7 +155,7 @@ public class p2mpserver implements Runnable {
 
         if (sequenceNum != -1)
             // 4. all is good. write data to file
-            writeToFile(data);
+            writeToFile(dataBytes);
 
         return sequenceNum;
     }
@@ -236,7 +236,9 @@ public class p2mpserver implements Runnable {
             // Initialize a pointer in file using OutputStream
             String path = System.getProperty("user.dir") + "/" + this.fileName + ".txt";
             File file = new File(path);
-            OutputStream os = new FileOutputStream(file);
+
+            // append to file
+            OutputStream os = new FileOutputStream(file, true);
 
             // Starts writing the bytes in it
             os.write(data);
