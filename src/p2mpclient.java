@@ -18,7 +18,7 @@ import java.util.Arrays;
  */
 public class p2mpclient {
 	private static final int NUM_BYTES_IN_HEADER = 8;
-	private static final short DATA_PACKET_VALUE = (short) 0b0101010101010101;
+	private static final char DATA_PACKET_VALUE = 0b0101010101010101;
 	private static final int SERVER_PORT_NUMBER = 7735;
 	private static final int SERVER_RESPONSE_BYTES = 8;
 	
@@ -70,6 +70,9 @@ public class p2mpclient {
 		bb.put(data);
 		
 		byte[] segmentBytes = bb.array();
+
+		System.out.println("The mss to send: " + data.length);
+		System.out.println();
 		
 		// Send bytes here....
 		DatagramSocket datagramSocket = new DatagramSocket();
@@ -86,6 +89,9 @@ public class p2mpclient {
 		datagramSocket.receive(responsePacket);
 		
 		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
+
+		//TODO: For sender, the 1st sequence # sent should be 0 right?
+		sequenceNum += data.length;
 	}
 	
 	/*
@@ -100,13 +106,16 @@ public class p2mpclient {
 		bb.putInt(sequenceNum);
 		
 		// Add the 16-bit checksum
-		short checksum = (short)getChecksum(data);
-		bb.putShort(checksum);
+		char checksum = (char)getChecksum(data);
+		bb.putChar(checksum);
 		
 		// Add the 16-bit data packet header value
-		bb.putShort(DATA_PACKET_VALUE);
+		bb.putChar(DATA_PACKET_VALUE);
 		
-		sequenceNum += data.length;
+
+		System.out.println("\r\nSequence Number to send: " + (sequenceNum));
+		System.out.println("Checksum to send: " + Integer.toBinaryString(checksum));
+		System.out.println("Data flag to send: " + Integer.toBinaryString(DATA_PACKET_VALUE));
 		
 		return bb.array();
 	}
@@ -114,28 +123,66 @@ public class p2mpclient {
 	/*
 	 * Computes and returns the 16-bit checksum as a short
 	 */
-    private static long getChecksum(byte[] data) {
-    	long sum = 0;
+    private static long getChecksum(byte[] buf) {
+		int length = buf.length;
+		int i = 0;
 
-		// Combine every 2 bytes of data into a 16-bit word and add to sum
-		for (int i = 0; i < data.length; i+=2) {
-			if (i+1 < data.length) {
-				sum += bytesToShort(data[i], data[i+1]);
-			} else {
-				sum += bytesToShort(data[i], (byte)0);
+		long sum = 0;
+		long data;
+
+		// Handle all pairs
+		while (length > 1) {
+			// Corrected to include @Andy's edits and various comments on Stack Overflow
+			data = (((buf[i] << 8) & 0xFF00) | ((buf[i + 1]) & 0xFF));
+			sum += data;
+			// 1's complement carry bit correction in 16-bits (detecting sign extension)
+			if ((sum & 0xFFFF0000) > 0) {
+				sum = sum & 0xFFFF;
+				sum += 1;
+			}
+
+			i += 2;
+			length -= 2;
+		}
+
+		// Handle remaining byte in odd length buffers
+		if (length > 0) {
+			// Corrected to include @Andy's edits and various comments on Stack Overflow
+			sum += (buf[i] << 8 & 0xFF00);
+			// 1's complement carry bit correction in 16-bits (detecting sign extension)
+			if ((sum & 0xFFFF0000) > 0) {
+				sum = sum & 0xFFFF;
+				sum += 1;
 			}
 		}
 
-		// Wrap any overflow so that we're guaranteed a 16-bit value
-		while ((sum >> Short.SIZE) != 0) {
-			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-		}
-
-		// Take the one's complement
-		sum = (~sum) & 0xFFFF;
-
-		// sum = 55676 (at this point) = -9860 in decimal 2s complement
+		// Final 1's complement value correction to 16-bits
+		sum = ~sum;
+		sum = sum & 0xFFFF;
 		return sum;
+
+//    	long sum = 0;
+//
+//		// Combine every 2 bytes of data into a 16-bit word and add to sum
+//		for (int i = 0; i < data.length; i+=2) {
+//			if (i+1 < data.length) {
+//				sum += bytesToShort(data[i], data[i+1]);
+//			} else {
+//				sum += bytesToShort(data[i], (byte)0);
+//			}
+//		}
+//
+//		// Wrap any overflow so that we're guaranteed a 16-bit value
+//		while ((sum >> Short.SIZE) != 0) {
+//			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+//		}
+//
+//		// Take the one's complement
+//		sum = (~sum) & 0xFFFF;
+//		System.out.println("The checksum to be sent out: " + Long.toBinaryString(sum));
+//
+//		// sum = 55676 (at this point) = -9860 in decimal 2s complement
+//		return sum;
 	}
 	
 	/*

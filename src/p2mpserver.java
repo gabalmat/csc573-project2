@@ -152,10 +152,10 @@ public class p2mpserver implements Runnable {
 
         // 3. check if segment is in-sequence
         sequenceNum = checkSequence(data, sequenceNum);
-//        if(!checkSequence(data, sequenceNum)) { sequenceNum = -1; }
 
-        // 4. all is good. write data to file
-        writeToFile(data);
+        if (sequenceNum != -1)
+            // 4. all is good. write data to file
+            writeToFile(data);
 
         return sequenceNum;
     }
@@ -171,9 +171,6 @@ public class p2mpserver implements Runnable {
         //  0000000000000000
         //  1010101010101010
         //
-        char one = (char)(ACK_HEADER_FIELD_1);
-        char two = (char)(ACK_HEADER_FIELD_2);
-
         int size = ((Integer.SIZE)/8) + ((Character.SIZE * 2)/8);
         ByteBuffer bf = ByteBuffer.allocate(size);
         bf.putInt(seqNum);
@@ -225,7 +222,8 @@ public class p2mpserver implements Runnable {
         int lastSeqNum = this.seqNumbersArray.get(size - 1);
 
         // check if seq # is in-sequence
-        if((lastSeqNum + mss) == seqNum) {
+        if((lastSeqNum + mss) == _seqNum) {
+            this.seqNumbersArray.add(_seqNum);
             return _seqNum;
         }
         else {
@@ -310,27 +308,64 @@ public class p2mpserver implements Runnable {
         System.out.println("\r\np2mpServer [Error]: " + message);
     }
     
-    private long getSumOfData(byte[] data) {
+    private long getSumOfData(byte[] buf) {
+        int length = buf.length;
+        int i = 0;
 
         long sum = 0;
+        long data;
 
-        // Combine every 2 bytes of data into a 16-bit word and add to sum
-        for (int i = 0; i < data.length; i += 2) {
-            if (i + 1 < data.length) {
-                sum += bytesToShort(data[i], data[i + 1]);
-            } else {
-                sum += bytesToShort(data[i], (byte) 0);
+        // Handle all pairs
+        while (length > 1) {
+            // Corrected to include @Andy's edits and various comments on Stack Overflow
+            data = (((buf[i] << 8) & 0xFF00) | ((buf[i + 1]) & 0xFF));
+            sum += data;
+            // 1's complement carry bit correction in 16-bits (detecting sign extension)
+            if ((sum & 0xFFFF0000) > 0) {
+                sum = sum & 0xFFFF;
+                sum += 1;
+            }
+
+            i += 2;
+            length -= 2;
+        }
+
+        // Handle remaining byte in odd length buffers
+        if (length > 0) {
+            // Corrected to include @Andy's edits and various comments on Stack Overflow
+            sum += (buf[i] << 8 & 0xFF00);
+            // 1's complement carry bit correction in 16-bits (detecting sign extension)
+            if ((sum & 0xFFFF0000) > 0) {
+                sum = sum & 0xFFFF;
+                sum += 1;
             }
         }
 
-        // Wrap any overflow so that we're guaranteed a 16-bit value
-        while ((sum >> Short.SIZE) != 0) {
-            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-            sum = sum +1;
-        }
-
+        // Final 1's complement value correction to 16-bits
+//        sum = ~sum;
+        sum = sum & 0xFFFF;
         _printMessage("The checksum should be 16 1s. Is it? " + Long.toBinaryString(sum));
-
         return sum;
+
+//        long sum = 0;
+//
+//        // Combine every 2 bytes of data into a 16-bit word and add to sum
+//        for (int i = 0; i < data.length; i += 2) {
+//            if (i + 1 < data.length) {
+//                sum += bytesToShort(data[i], data[i + 1]);
+//            } else {
+//                sum += bytesToShort(data[i], (byte) 0);
+//            }
+//        }
+//
+//        // Wrap any overflow so that we're guaranteed a 16-bit value
+//        while ((sum >> Short.SIZE) != 0) {
+//            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+//            sum = sum +1;
+//        }
+
+//        _printMessage("The checksum should be 16 1s. Is it? " + Long.toBinaryString(sum));
+//
+//        return sum;
     }
 }
