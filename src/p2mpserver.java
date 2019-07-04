@@ -21,7 +21,7 @@ public class p2mpserver implements Runnable {
     private Double probOfError;
     private boolean runProgram;
     private DatagramSocket udpSock;
-    private byte[] buffer = new byte[MAX_UDP_BYTES]; //TODO: What should buffer size be?
+    private byte[] buffer;
     private ArrayList<Integer> seqNumbersArray;
 
     public static void main(String[] args) {
@@ -69,6 +69,7 @@ public class p2mpserver implements Runnable {
         this.probOfError = probOfError;
         this.runProgram = true;
         this.seqNumbersArray = new ArrayList<Integer>();
+        this.buffer = new byte[MAX_UDP_BYTES];
 
         String msg = "Command line args are (" +
                 "port #: " +
@@ -105,15 +106,14 @@ public class p2mpserver implements Runnable {
 
                     // create the datagram to encapsulate the ack
                     // modify data of the packet with the ACK
-                    DatagramPacket sndPacket = rcvPacket;
-                    sndPacket.setData(segmentAck);
+                    rcvPacket.setData(segmentAck);
 
                     // send ACK segment
-                    udpSock.send(sndPacket);
+                    udpSock.send(rcvPacket);
                 }
 
                 // clear buffer
-                this.buffer = new byte[256];
+                this.buffer = new byte[MAX_UDP_BYTES];
             }
         }
         catch (Exception e) {
@@ -146,14 +146,13 @@ public class p2mpserver implements Runnable {
         if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-//        short chksm2sComp = (short) ByteBuffer.wrap(checksumBytes).getShort();
         int checksum = ByteBuffer.wrap(checksumBytes).getInt();
-        //Long.parseLong()
-        
+
         if(!verifyChecksum(dataBytes, checksum)) { sequenceNum = -1; }
 
         // 3. check if segment is in-sequence
-        if(!checkSequence(data, sequenceNum)) { sequenceNum = -1; }
+        sequenceNum = checkSequence(data, sequenceNum);
+//        if(!checkSequence(data, sequenceNum)) { sequenceNum = -1; }
 
         // 4. all is good. write data to file
         writeToFile(data);
@@ -161,14 +160,6 @@ public class p2mpserver implements Runnable {
         return sequenceNum;
     }
 
-    /**
-     * ACK Segment
-     * the 32-bit sequence number that is being ACKed
-     * a 16-bit field that is all zeroes, and
-     * a 16-bit field that has the value **1010101010101010**,
-     * @param seqNum A 32-bit integer (use hex)
-     * @return The segment (string)
-     */
     private byte[] createACK(int seqNum) {
 
         // hex for 10101010 is 0xAA and hex for 1010101010101010 is 0xAAAA
@@ -180,13 +171,16 @@ public class p2mpserver implements Runnable {
         //  0000000000000000
         //  1010101010101010
         //
-        int size = (Integer.SIZE * 3)/ 8;
+        char one = (char)(ACK_HEADER_FIELD_1);
+        char two = (char)(ACK_HEADER_FIELD_2);
+
+        int size = ((Integer.SIZE)/8) + ((Character.SIZE * 2)/8);
         ByteBuffer bf = ByteBuffer.allocate(size);
         bf.putInt(seqNum);
-        bf.putInt(ACK_HEADER_FIELD_1);
-        bf.putInt(ACK_HEADER_FIELD_2);
+        bf.putChar((char)ACK_HEADER_FIELD_1);
+        bf.putChar((char)ACK_HEADER_FIELD_2);
 
-        _printMessage("ACK # to be sent out:\r\n" + seqNum);
+        _printMessage("ACK # to be sent out: " + seqNum);
         return bf.array();
     }
 
@@ -200,31 +194,43 @@ public class p2mpserver implements Runnable {
     	long dataSum = getSumOfData(input);
 
     	// Add to checksum and return true if result is 1111111111111111
-    	if (dataSum == 0xFFFF) {
-    		return true;
-    	}
-    	return false;
+        return dataSum == 0xFFFF;
     }
 
-    /**
-     * The Client Segment Format
-     * a 32-bit sequence number, starts at 0
-     * a 16-bit checksum of the data part, computed in the same way as the UDP checksum, and
-     * a 16-bit field that has the value 0101010101010101
-     *
-     * Assuming sequence numbers are based on data size sent
-     *
-     * @param data The segment sent from client
-     * @return true if no errors, false if errors
-     */
-    private boolean checkSequence(byte[] data, int seqNum) {
+    private int checkSequence(byte[] data, int seqNum) {
+
+        //  Client Segment Example
+        //  sequence number based on data size
+        //
+        //  <32 bit sequence number>
+        //  <16 bit checksum number>
+        //  0101010101010101 (16 bit)
+        //
         int mss = getMSSValue(data);
+
+        // use an temporary variable for sequence number
+        int _seqNum = seqNum + mss;
 
         // get the last in-sequence segment number
         int size = this.seqNumbersArray.size();
+
+        // check if this is 1st sequence number
+        if (size == 0) {
+            this.seqNumbersArray.add(_seqNum);
+            return _seqNum;
+        }
+
+        /* at this point, there is a sequence number history */
+
         int lastSeqNum = this.seqNumbersArray.get(size - 1);
 
-        return (lastSeqNum + mss) == seqNum;
+        // check if seq # is in-sequence
+        if((lastSeqNum + mss) == seqNum) {
+            return _seqNum;
+        }
+        else {
+            return -1;
+        }
     }
 
     private void writeToFile(byte[] data) {
@@ -247,8 +253,11 @@ public class p2mpserver implements Runnable {
     }
 
     private int getMSSValue(byte[] data) {
-        //TODO: Implement
-        return  -1;
+        //
+        // Size of each element in data is a byte
+        // MSS represents size of payload only
+        //
+        return data.length - NUM_BYTES_IN_HEADER;
     }
 
     private boolean checkR() {
