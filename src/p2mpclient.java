@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,7 +24,7 @@ public class p2mpclient {
 	
 	private static int sequenceNum = 0;
 	private static int mss;
-	private static ArrayList<String> servers = new ArrayList<>();
+	private static ArrayList<String> serverMap = new ArrayList<>();
 	
 	public static void main(String[] args) throws IOException {
 		
@@ -41,7 +41,7 @@ public class p2mpclient {
 		File file = new File(filepath);
 
 		// Add one server (localhost) for now
-		servers.add("127.0.0.1");
+		serverMap.add("127.0.0.1");
 		
 		byte[] fileBytes = Files.readAllBytes(file.toPath());
 		int offset = 0;
@@ -75,21 +75,35 @@ public class p2mpclient {
 
 		System.out.println("The mss to send: " + data.length);
 		System.out.println();
-		
-		// Send bytes here....
-		DatagramSocket datagramSocket = new DatagramSocket();
+
+
+        // Send data to servers
+		boolean keepSending = true;
+        // Hardcode the receiver address to be localhost for now...
+        InetAddress receiverAddress = InetAddress.getLocalHost();
+        DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
+                receiverAddress, SERVER_PORT_NUMBER);
+
+        DatagramSocket socket = new DatagramSocket();
+		socket.setSoTimeout(500);
+
 		byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
 		DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
-		
-		// Hardcode the receiver address to be localhost for now...
-		InetAddress receiverAddress = InetAddress.getLocalHost();
-		DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
-				receiverAddress, SERVER_PORT_NUMBER);
-		datagramSocket.send(outPacket);
-		
-		// Receive the response from server
-		datagramSocket.receive(responsePacket);
-		
+
+		socket.send(outPacket);
+
+		while (keepSending) {
+			try {
+				socket.receive(responsePacket);
+				keepSending = false;
+			}
+			catch (SocketTimeoutException e) {
+				socket.send(outPacket);
+				System.out.println("Sent packet again");
+				continue;
+			}
+		}
+
 		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
 
 		//TODO: For sender, the 1st sequence # sent should be 0 right?
@@ -162,38 +176,9 @@ public class p2mpclient {
 		sum = ~sum;
 		sum = sum & 0xFFFF;
 		return sum;
+	}
 
-//    	long sum = 0;
-//
-//		// Combine every 2 bytes of data into a 16-bit word and add to sum
-//		for (int i = 0; i < data.length; i+=2) {
-//			if (i+1 < data.length) {
-//				sum += bytesToShort(data[i], data[i+1]);
-//			} else {
-//				sum += bytesToShort(data[i], (byte)0);
-//			}
-//		}
-//
-//		// Wrap any overflow so that we're guaranteed a 16-bit value
-//		while ((sum >> Short.SIZE) != 0) {
-//			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-//		}
-//
-//		// Take the one's complement
-//		sum = (~sum) & 0xFFFF;
-//		System.out.println("The checksum to be sent out: " + Long.toBinaryString(sum));
-//
-//		// sum = 55676 (at this point) = -9860 in decimal 2s complement
-//		return sum;
-	}
-	
-	/*
-	 * Takes 2 bytes and concatenates them to create a 16-bit word
-	 */
-	private static long bytesToShort(byte a, byte b) {
-		long sh = (long) a;
-		sh <<= 8;
-		
-		return (sh | b);
-	}
+    private static void _printError(String message) {
+        System.out.println("\r\np2mpClient [Error]: " + message);
+    }
 }
