@@ -263,6 +263,7 @@ public class p2mpserver implements Runnable {
         double r = getRandomR();
         if(r <= this.probOfError) {
             // received packet is discarded and no other action is taken
+            _printMessage("checkR() is false...so client needs to resend segment");
             return false;
         }
         return true;
@@ -343,8 +344,8 @@ public class p2mpserver implements Runnable {
 
         // Final 1's complement value correction to 16-bits
 //        sum = ~sum;
-        sum = sum & 0xFFFF;
-        _printMessage("The checksum should be 16 1s. Is it? " + Long.toBinaryString(sum));
+//        sum = sum & 0xFFFF;
+        _printMessage("The check...summed up: " + Long.toBinaryString(sum));
         return sum;
 
 //        long sum = 0;
