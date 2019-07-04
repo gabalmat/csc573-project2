@@ -24,10 +24,9 @@ public class p2mpclient {
 	
 	private static int sequenceNum = 0;
 	private static int mss;
+	private static ArrayList<String> servers = new ArrayList<>();
 	
 	public static void main(String[] args) throws IOException {
-		
-		ArrayList<String> servers = new ArrayList<>();
 		
 		// Get command line arguments
 		// add hostname of each server to the array list
@@ -40,6 +39,9 @@ public class p2mpclient {
 		String filename = "data_small.txt";
 		String filepath = workingDir + System.getProperty("file.separator") + filename;
 		File file = new File(filepath);
+
+		// Add one server (localhost) for now
+		servers.add("127.0.0.1");
 		
 		byte[] fileBytes = Files.readAllBytes(file.toPath());
 		int offset = 0;
