@@ -86,8 +86,6 @@ public class p2mpclient {
 		datagramSocket.receive(responsePacket);
 		
 		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
-		
-		
 	}
 	
 	/*
@@ -102,7 +100,7 @@ public class p2mpclient {
 		bb.putInt(sequenceNum);
 		
 		// Add the 16-bit checksum
-		short checksum = getChecksum(data);
+		short checksum = (short)getChecksum(data);
 		bb.putShort(checksum);
 		
 		// Add the 16-bit data packet header value
@@ -116,9 +114,9 @@ public class p2mpclient {
 	/*
 	 * Computes and returns the 16-bit checksum as a short
 	 */
-	private static short getChecksum(byte[] data) {
-		long sum = 0;
-		
+    private static long getChecksum(byte[] data) {
+    	long sum = 0;
+
 		// Combine every 2 bytes of data into a 16-bit word and add to sum
 		for (int i = 0; i < data.length; i+=2) {
 			if (i+1 < data.length) {
@@ -127,25 +125,26 @@ public class p2mpclient {
 				sum += bytesToShort(data[i], (byte)0);
 			}
 		}
-		
+
 		// Wrap any overflow so that we're guaranteed a 16-bit value
 		while ((sum >> Short.SIZE) != 0) {
 			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
 		}
-		
+
 		// Take the one's complement
-		sum = ~sum;
-		
-		return (short) sum;
+		sum = (~sum) & 0xFFFF;
+
+		// sum = 55676 (at this point) = -9860 in decimal 2s complement
+		return sum;
 	}
 	
 	/*
 	 * Takes 2 bytes and concatenates them to create a 16-bit word
 	 */
-	private static short bytesToShort(byte a, byte b) {
-		short sh = (short) a;
+	private static long bytesToShort(byte a, byte b) {
+		long sh = (long) a;
 		sh <<= 8;
 		
-		return (short)(sh | b);
+		return (sh | b);
 	}
 }

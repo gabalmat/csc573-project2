@@ -101,12 +101,12 @@ public class p2mpserver implements Runnable {
 
                 if(seqNum != -1) {
                     // create ACK segment
-                    String ack = createACK(seqNum);
+                    byte[] segmentAck = createACK(seqNum);
 
                     // create the datagram to encapsulate the ack
                     // modify data of the packet with the ACK
                     DatagramPacket sndPacket = rcvPacket;
-                    sndPacket.setData(ack.getBytes());
+                    sndPacket.setData(segmentAck);
 
                     // send ACK segment
                     udpSock.send(sndPacket);
@@ -130,11 +130,15 @@ public class p2mpserver implements Runnable {
         
         // Split data into header field portions and data portion
         byte[] sequenceBytes = Arrays.copyOfRange(data, 0, 4);
-        byte[] checksumBytes = Arrays.copyOfRange(data, 4, 6);
+        byte[] checksumBytes = new byte[4];
+        byte[] _checksumBytes = Arrays.copyOfRange(data, 4, 6);
+        checksumBytes[0] = 0;
+        checksumBytes[1] = 0;
+        checksumBytes[2] = _checksumBytes[0];
+        checksumBytes[3] = _checksumBytes[1];
+
         byte[] dataBytes = Arrays.copyOfRange(data, NUM_BYTES_IN_HEADER, data.length);
 
-        char[] dataArray = new String(data).toCharArray();
-        
         // Get the sequence number
         int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
 
@@ -142,7 +146,9 @@ public class p2mpserver implements Runnable {
         if(!checkR()) { sequenceNum = -1; }
 
         // 2. compute checksum
-        short checksum = (short) ByteBuffer.wrap(checksumBytes).getInt();
+//        short chksm2sComp = (short) ByteBuffer.wrap(checksumBytes).getShort();
+        int checksum = ByteBuffer.wrap(checksumBytes).getInt();
+        //Long.parseLong()
         
         if(!verifyChecksum(dataBytes, checksum)) { sequenceNum = -1; }
 
@@ -163,7 +169,7 @@ public class p2mpserver implements Runnable {
      * @param seqNum A 32-bit integer (use hex)
      * @return The segment (string)
      */
-    private String createACK(int seqNum) {
+    private byte[] createACK(int seqNum) {
 
         // hex for 10101010 is 0xAA and hex for 1010101010101010 is 0xAAAA
         // can use Integer.valueOf or Integer.parseInt to convert from String
@@ -174,54 +180,30 @@ public class p2mpserver implements Runnable {
         //  0000000000000000
         //  1010101010101010
         //
+        int size = (Integer.SIZE * 3)/ 8;
+        ByteBuffer bf = ByteBuffer.allocate(size);
+        bf.putInt(seqNum);
+        bf.putInt(ACK_HEADER_FIELD_1);
+        bf.putInt(ACK_HEADER_FIELD_2);
 
-        String ackStr = Integer.toHexString(seqNum) +
-                NEWLINE +
-                ACK_HEADER_FIELD_1 +
-                NEWLINE +
-                ACK_HEADER_FIELD_2 +
-                NEWLINE;
-        _printMessage("ACK to be sent out:\r\n" + ackStr);
-        return ackStr;
+        _printMessage("ACK # to be sent out:\r\n" + seqNum);
+        return bf.array();
     }
 
-    private boolean verifyChecksum(byte[] data, short checksum) {
-        //TODO: Implement
-    	
-    	short dataSum = getSumOfData(data);
-    	
+    private boolean verifyChecksum(byte[] data, int checksum) {
+
+        ByteBuffer ba = ByteBuffer.allocate(data.length + (Integer.SIZE)/8);
+        ba.putInt(checksum);
+        ba.put(data);
+        byte [] input = ba.array();
+
+    	long dataSum = getSumOfData(input);
+
     	// Add to checksum and return true if result is 1111111111111111
-    	if ((dataSum + checksum) == Short.MAX_VALUE) {
+    	if (dataSum == 0xFFFF) {
     		return true;
     	}
-    	
     	return false;
-    	
-//        long sum = 0; //64 bits
-//        byte[] payload = getPayload(data);
-//        short checkSum = getChecksum(data); //16 bits
-//
-//        // add up the payload
-//        for (int i = 0; i < payload.length; i+=2) {
-//            if (i+1 < payload.length) {
-//                sum += bytesToShort(payload[i], payload[i+1]);
-//            } else {
-//                sum += bytesToShort(payload[i], (byte)0);
-//            }
-//        }
-//        // add the checksum to payload
-//        sum += checkSum;
-//
-//        // convert long to short?
-//        while ((sum >> Short.SIZE) != 0) {
-//            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-//        }
-//
-//        _printMessage("The sum should be 16 1s. Is it? "
-//                + Integer.toBinaryString((int)sum).substring(16));
-
-//        return sum == ALL_16_ONES;
-        
     }
 
     /**
@@ -264,28 +246,6 @@ public class p2mpserver implements Runnable {
         }
     }
 
-    private short getChecksum(byte[] data) {
-        //TODO: Implement
-        return -1;
-    }
-
-    private byte[] getPayload(byte[] data) {
-        //TODO: Implement
-        return null;
-    }
-
-    private int getSequenceNumber(char[] dataArray) {
-//        char[] seqNum = new char[32];
-//        // 1st 32 digits is the sequence #
-//        for (int i = 0; i < 31; i++) {
-//            seqNum[i] = dataArray[i];
-//        }
-//        var s = new String(seqNum);
-//        var i = Integer.parseInt(s, 2);
-        // TODO: Implement
-        return -1;
-    }
-
     private int getMSSValue(byte[] data) {
         //TODO: Implement
         return  -1;
@@ -326,11 +286,11 @@ public class p2mpserver implements Runnable {
     /*
      * Takes 2 bytes and concatenates them to create a 16-bit word
      */
-    private short bytesToShort(byte a, byte b) {
-        short sh = (short) a;
+    private long bytesToShort(byte a, byte b) {
+        long sh = (long) a;
         sh <<= 8;
 
-        return (short)(sh | b);
+        return (sh | b);
     }
 
     private static void _printMessage(String message) {
@@ -341,24 +301,27 @@ public class p2mpserver implements Runnable {
         System.out.println("\r\np2mpServer [Error]: " + message);
     }
     
-    private short getSumOfData(byte[] data) {
-    	// Add all 16-bit words in the data
-    	long sum = 0;
-		
-		// Combine every 2 bytes of data into a 16-bit word and add to sum
-		for (int i = 0; i < data.length; i+=2) {
-			if (i+1 < data.length) {
-				sum += bytesToShort(data[i], data[i+1]);
-			} else {
-				sum += bytesToShort(data[i], (byte)0);
-			}
-		}
-		
-		// Wrap any overflow so that we're guaranteed a 16-bit value
-		while ((sum >> Short.SIZE) != 0) {
-			sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
-		}
-		
-		return (short) sum;
+    private long getSumOfData(byte[] data) {
+
+        long sum = 0;
+
+        // Combine every 2 bytes of data into a 16-bit word and add to sum
+        for (int i = 0; i < data.length; i += 2) {
+            if (i + 1 < data.length) {
+                sum += bytesToShort(data[i], data[i + 1]);
+            } else {
+                sum += bytesToShort(data[i], (byte) 0);
+            }
+        }
+
+        // Wrap any overflow so that we're guaranteed a 16-bit value
+        while ((sum >> Short.SIZE) != 0) {
+            sum = (sum & 0xFFFF) + (sum >> Short.SIZE);
+            sum = sum +1;
+        }
+
+        _printMessage("The checksum should be 16 1s. Is it? " + Long.toBinaryString(sum));
+
+        return sum;
     }
 }
