@@ -79,12 +79,12 @@ public class p2mpserver implements Runnable {
                 ", p: " +
                 this.probOfError +
                 ")";
-        _printMessage(msg);
+        _printMessage(msg, true);
     }
 
     @Override
     public void run() {
-        _printMessage("Listening for connections...");
+        _printMessage("Listening for connections...\r\n", false);
         this.udpSock = createUDPSocket();
         if(this.udpSock == null) { return; }
 
@@ -110,6 +110,8 @@ public class p2mpserver implements Runnable {
 
                     // send ACK segment
                     udpSock.send(rcvPacket);
+
+                    _printMessage("ACK segment sent\r\n", false);
                 }
 
                 // clear buffer
@@ -126,7 +128,7 @@ public class p2mpserver implements Runnable {
     }
 
     private int processRequest(byte[] data) {
-        _printMessage("The data size received: " + data.length);
+        _printMessage("The data size received: " + data.length, false);
 
         // Split data into header field portions and data portion
         byte[] sequenceBytes = Arrays.copyOfRange(data, 0, 4);
@@ -141,6 +143,7 @@ public class p2mpserver implements Runnable {
 
         // Get the sequence number
         int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
+        _printMessage("Seq # " + sequenceNum + " received",false);
 
         // 1. check R value
         if(!checkR()) { return -1; }
@@ -179,7 +182,7 @@ public class p2mpserver implements Runnable {
         bf.putChar((char)ACK_HEADER_FIELD_1);
         bf.putChar((char)ACK_HEADER_FIELD_2);
 
-        _printMessage("ACK #: " + seqNum + " created");
+        _printMessage("ACK # " + seqNum + " created", false);
 
         // the ACK header
         return bf.array();
@@ -196,7 +199,7 @@ public class p2mpserver implements Runnable {
         boolean isVerified = (dataSum == 0xFFFF);
 
     	// Add to checksum and return true if result is 1111111111111111
-        _printMessage("verifyChecksum...success? " + isVerified);
+        _printMessage("verifyChecksum...success? " + isVerified, false);
         return isVerified;
     }
 
@@ -233,6 +236,8 @@ public class p2mpserver implements Runnable {
             return _seqNum;
         }
         else {
+            _printError("Client seq (# " + seqNum + ") is incorrect. " +
+                    "Expecting (# " + _seqNum + ")\r\n");
             return -1;
         }
     }
@@ -271,7 +276,8 @@ public class p2mpserver implements Runnable {
         double r = getRandomR();
         if(r <= this.probOfError) {
             // received packet is discarded and no other action is taken
-            _printMessage("checkR() is false...so client needs to resend segment");
+            _printMessage("checkR() is false...so " +
+                    "client needs to resend segment\r\n", false);
             return false;
         }
         return true;
@@ -309,8 +315,9 @@ public class p2mpserver implements Runnable {
         return (sh | b);
     }
 
-    private static void _printMessage(String message) {
-        System.out.println("\r\np2mpServer: " + message);
+    private static void _printMessage(String message, boolean newLine) {
+        if(newLine) System.out.println("\r\np2mpServer: " + message);
+        else System.out.println("p2mpServer: " + message);
     }
 
     private static void _printError(String message) {
