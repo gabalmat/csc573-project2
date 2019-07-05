@@ -1,4 +1,5 @@
 
+import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -9,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Reads data from file specified in command line
@@ -24,7 +27,7 @@ public class p2mpclient {
 	
 	private static int sequenceNum = 0;
 	private static int mss;
-	private static ArrayList<String> serverMap = new ArrayList<>();
+	private static Map<InetAddress, DatagramSocket> serverSockets = new HashMap<>();
 	
 	public static void main(String[] args) throws IOException {
 		
@@ -41,7 +44,11 @@ public class p2mpclient {
 		File file = new File(filepath);
 
 		// Add one server (localhost) for now
-		serverMap.add("127.0.0.1");
+		InetAddress receiverAddress = InetAddress.getByName("127.0.0.1");
+		DatagramSocket socket = new DatagramSocket();
+		socket.setSoTimeout(500);
+		serverSockets.put(receiverAddress, socket);
+
 		
 		byte[] fileBytes = Files.readAllBytes(file.toPath());
 		int offset = 0;
@@ -78,35 +85,37 @@ public class p2mpclient {
 
 
         // Send data to servers
-		boolean keepSending = true;
-        // Hardcode the receiver address to be localhost for now...
-        InetAddress receiverAddress = InetAddress.getLocalHost();
-        DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
-                receiverAddress, SERVER_PORT_NUMBER);
+		for (Map.Entry<InetAddress, DatagramSocket> entry : serverSockets.entrySet()) {
+			boolean keepSending = true;
+			InetAddress receiverAddress = entry.getKey();
+			DatagramSocket socket = entry.getValue();
 
-        DatagramSocket socket = new DatagramSocket();
-		socket.setSoTimeout(500);
+			// Hardcode the receiver address to be localhost for now...
+			DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
+					receiverAddress, SERVER_PORT_NUMBER);
 
-		byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
-		DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
+			socket.setSoTimeout(500);
 
-		socket.send(outPacket);
+			byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
+			DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
 
-		while (keepSending) {
-			try {
-				socket.receive(responsePacket);
-				keepSending = false;
+			socket.send(outPacket);
+
+			while (keepSending) {
+				try {
+					socket.receive(responsePacket);
+					keepSending = false;
+				}
+				catch (SocketTimeoutException e) {
+					socket.send(outPacket);
+					System.out.println("Sent packet again");
+					continue;
+				}
 			}
-			catch (SocketTimeoutException e) {
-				socket.send(outPacket);
-				System.out.println("Sent packet again");
-				continue;
-			}
+
+			System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
 		}
 
-		System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
-
-		//TODO: For sender, the 1st sequence # sent should be 0 right?
 		sequenceNum += data.length;
 	}
 	
