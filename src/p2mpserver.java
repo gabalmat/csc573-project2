@@ -127,7 +127,7 @@ public class p2mpserver implements Runnable {
 
     private int processRequest(byte[] data) {
         _printMessage("The data size received: " + data.length);
-        
+
         // Split data into header field portions and data portion
         byte[] sequenceBytes = Arrays.copyOfRange(data, 0, 4);
         byte[] checksumBytes = new byte[4];
@@ -143,21 +143,21 @@ public class p2mpserver implements Runnable {
         int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
 
         // 1. check R value
-        if(!checkR()) { sequenceNum = -1; }
+        if(!checkR()) { return -1; }
 
         // 2. compute checksum
         int checksum = ByteBuffer.wrap(checksumBytes).getInt();
 
-        if(!verifyChecksum(dataBytes, checksum)) { sequenceNum = -1; }
+        if(!verifyChecksum(dataBytes, checksum)) { return -1; }
 
         // 3. check if segment is in-sequence
-        sequenceNum = checkSequence(data, sequenceNum);
+        int ackSequenceNum = getSequence(data, sequenceNum);
 
-        if (sequenceNum != -1)
+        if (ackSequenceNum != -1)
             // 4. all is good. write data to file
             writeToFile(dataBytes);
 
-        return sequenceNum;
+        return ackSequenceNum;
     }
 
     private byte[] createACK(int seqNum) {
@@ -171,13 +171,17 @@ public class p2mpserver implements Runnable {
         //  0000000000000000
         //  1010101010101010
         //
+
+        // create ACK header. Must be exactly 64 bits or 8 Bytes
         int size = ((Integer.SIZE)/8) + ((Character.SIZE * 2)/8);
         ByteBuffer bf = ByteBuffer.allocate(size);
         bf.putInt(seqNum);
         bf.putChar((char)ACK_HEADER_FIELD_1);
         bf.putChar((char)ACK_HEADER_FIELD_2);
 
-        _printMessage("ACK # to be sent out: " + seqNum);
+        _printMessage("ACK #: " + seqNum + " created");
+
+        // the ACK header
         return bf.array();
     }
 
@@ -189,12 +193,14 @@ public class p2mpserver implements Runnable {
         byte [] input = ba.array();
 
     	long dataSum = getSumOfData(input);
+        boolean isVerified = (dataSum == 0xFFFF);
 
     	// Add to checksum and return true if result is 1111111111111111
-        return dataSum == 0xFFFF;
+        _printMessage("verifyChecksum...success? " + isVerified);
+        return isVerified;
     }
 
-    private int checkSequence(byte[] data, int seqNum) {
+    private int getSequence(byte[] data, int seqNum) {
 
         //  Client Segment Example
         //  sequence number based on data size
@@ -310,7 +316,7 @@ public class p2mpserver implements Runnable {
     private static void _printError(String message) {
         System.out.println("\r\np2mpServer [Error]: " + message);
     }
-    
+
     private long getSumOfData(byte[] buf) {
         int length = buf.length;
         int i = 0;
@@ -347,7 +353,6 @@ public class p2mpserver implements Runnable {
         // Final 1's complement value correction to 16-bits
 //        sum = ~sum;
 //        sum = sum & 0xFFFF;
-        _printMessage("The check...summed up: " + Long.toBinaryString(sum));
         return sum;
 
 //        long sum = 0;
