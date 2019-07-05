@@ -262,7 +262,7 @@ public class p2mpserver implements Runnable {
     private void writeToFile(byte[] data) {
         try {
             // Initialize a pointer in file using OutputStream
-            String path = System.getProperty("user.dir") + "/" + this.fileName + ".txt";
+            String path = System.getProperty("user.dir") + "/" + this.fileName;
             File file = new File(path);
 
             // append to file
