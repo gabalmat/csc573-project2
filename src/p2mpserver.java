@@ -23,6 +23,8 @@ public class p2mpserver implements Runnable {
     private DatagramSocket udpSock;
     private byte[] buffer;
     private ArrayList<Integer> seqNumbersArray;
+    private int oldSequenceNum;
+    private int oldMSS;
 
     public static void main(String[] args) {
         int portNumber; String fileName; double p;
@@ -69,6 +71,8 @@ public class p2mpserver implements Runnable {
         this.probOfError = probOfError;
         this.runProgram = true;
         this.seqNumbersArray = new ArrayList<Integer>();
+        this.oldSequenceNum = -1;
+        this.oldMSS = -1;
         this.buffer = new byte[MAX_UDP_BYTES];
 
         String msg = "Command line args are (" +
@@ -143,22 +147,27 @@ public class p2mpserver implements Runnable {
 
         // Get the sequence number
         int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
-        _printMessage("Seq # " + sequenceNum + " received",false);
+        int mss = getMSSValue(data);
+        _printMessage("Seq # " + sequenceNum + " received", false);
+        _printMessage("MSS is: " + mss,false);
 
         // 1. check R value
         if(!checkR()) { return -1; }
 
         // 2. compute checksum
         int checksum = ByteBuffer.wrap(checksumBytes).getInt();
-
         if(!verifyChecksum(dataBytes, checksum)) { return -1; }
 
         // 3. check if segment is in-sequence
-        int ackSequenceNum = getSequence(data, sequenceNum);
+        int ackSequenceNum = getSequence(data, sequenceNum, mss);
 
         if (ackSequenceNum != -1)
             // 4. all is good. write data to file
             writeToFile(dataBytes);
+
+        // 4. set history of Seq and MSS values
+        this.oldSequenceNum = sequenceNum;
+        this.oldMSS = mss;
 
         return ackSequenceNum;
     }
@@ -203,7 +212,7 @@ public class p2mpserver implements Runnable {
         return isVerified;
     }
 
-    private int getSequence(byte[] data, int seqNum) {
+    private int getSequence(byte[] data, int seqNum, int mss) {
 
         //  Client Segment Example
         //  sequence number based on data size
@@ -212,7 +221,6 @@ public class p2mpserver implements Runnable {
         //  <16 bit checksum number>
         //  0101010101010101 (16 bit)
         //
-        int mss = getMSSValue(data);
 
         // use an temporary variable for sequence number
         int _seqNum = seqNum + mss;
@@ -230,6 +238,15 @@ public class p2mpserver implements Runnable {
 
         int lastSeqNum = this.seqNumbersArray.get(size - 1);
 
+        // check if this is a duplicate seq #
+        if(seqNum == this.oldSequenceNum) {
+            String msg = "Duplicate Seq # " + seqNum + " received. " +
+                    "Resending old ACK # " + lastSeqNum;
+            _printMessage(msg, false);
+
+            return lastSeqNum;
+        }
+
         // check if seq # is in-sequence
         if((lastSeqNum + mss) == _seqNum) {
             this.seqNumbersArray.add(_seqNum);
@@ -237,7 +254,7 @@ public class p2mpserver implements Runnable {
         }
         else {
             _printError("Client seq (# " + seqNum + ") is incorrect. " +
-                    "Expecting (# " + _seqNum + ")\r\n");
+                    "Expecting (# " + lastSeqNum + ")\r\n");
             return -1;
         }
     }
@@ -268,6 +285,7 @@ public class p2mpserver implements Runnable {
         // Size of each element in data is a byte
         // MSS represents size of payload only
         //
+        //TODO: What about the very last segment client sends?
         return data.length - NUM_BYTES_IN_HEADER;
     }
 
@@ -321,7 +339,7 @@ public class p2mpserver implements Runnable {
     }
 
     private static void _printError(String message) {
-        System.out.println("\r\np2mpServer [Error]: " + message);
+        System.out.println("p2mpServer [Error]: " + message);
     }
 
     private long getSumOfData(byte[] buf) {
