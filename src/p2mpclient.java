@@ -1,5 +1,4 @@
 
-import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -8,7 +7,6 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,30 +28,45 @@ public class p2mpclient {
 	private static Map<InetAddress, DatagramSocket> serverSockets = new HashMap<>();
 	
 	public static void main(String[] args) throws IOException {
-		
-		// Get command line arguments
-		// add hostname of each server to the array list
-		// get file name
-		// get MSS (max segment size)
-		
-		// mss and filename are hard-coded below for now
-		mss = 512;
+
+	    // Verify correct number of arguments
+//        try {
+//            if (args.length != 6) {
+//                throw new IllegalArgumentException("Missing required args: " +
+//                        "server-1, server-2, server-3, port #, file name, MSS");
+//            }
+//        }
+//        catch (IllegalArgumentException e) {
+//            _printError(e.toString());
+//            return;
+//        }
+
+        String[] serverIPs = new String[1];
+        serverIPs[0] = args[0];
+        //serverIPs[1] = args[1];
+        //serverIPs[2] = args[2];
+        int port = Integer.parseInt(args[3]);
+        String filename = args[4];
+        mss = Integer.parseInt(args[5]);
+
+        for (String ip : serverIPs) {
+            InetAddress receiverAddress = InetAddress.getByName(ip);
+            DatagramSocket socket = new DatagramSocket(port);
+            socket.setSoTimeout(500);
+            serverSockets.put(receiverAddress, socket);
+        }
+
+        // Create File object to read from
 		String workingDir = System.getProperty("user.dir");
-		String filename = "data_small.txt";
 		String filepath = workingDir + System.getProperty("file.separator") + filename;
 		File file = new File(filepath);
 
-		// Add one server (localhost) for now
-		InetAddress receiverAddress = InetAddress.getByName("127.0.0.1");
-		DatagramSocket socket = new DatagramSocket();
-		socket.setSoTimeout(500);
-		serverSockets.put(receiverAddress, socket);
-
-		
-		byte[] fileBytes = Files.readAllBytes(file.toPath());
 		int offset = 0;
-		
+
+		// Read bytes from file and call rdt_send to send bytes to servers
 		try {
+            byte[] fileBytes = Files.readAllBytes(file.toPath());
+
 			while (offset < fileBytes.length) {
 				long bytesRemaining = fileBytes.length - offset;
 				int dataLen = (int) Math.min(mss, bytesRemaining);
