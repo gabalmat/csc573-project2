@@ -41,17 +41,17 @@ public class p2mpclient {
 //            return;
 //        }
 
-        String[] serverIPs = new String[1];
+        String[] serverIPs = new String[3];
         serverIPs[0] = args[0];
-        //serverIPs[1] = args[1];
-        //serverIPs[2] = args[2];
+        serverIPs[1] = args[1];
+        serverIPs[2] = args[2];
         int port = Integer.parseInt(args[3]);
         String filename = args[4];
         mss = Integer.parseInt(args[5]);
 
         for (String ip : serverIPs) {
             InetAddress receiverAddress = InetAddress.getByName(ip);
-            DatagramSocket socket = new DatagramSocket(port);
+            DatagramSocket socket = new DatagramSocket();
             socket.setSoTimeout(500);
             serverSockets.put(receiverAddress, socket);
         }
