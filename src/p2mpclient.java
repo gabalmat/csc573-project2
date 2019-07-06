@@ -112,12 +112,19 @@ public class p2mpclient {
 			byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
 			DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
 
+			int targetACK = sequenceNum + data.length;
+
 			socket.send(outPacket);
 
 			while (keepSending) {
 				try {
 					socket.receive(responsePacket);
-					keepSending = false;
+					byte[] ackNumBytes = Arrays.copyOfRange(responsePacket.getData(), 0, 4);
+					int ack = ByteBuffer.wrap(ackNumBytes).getInt();
+
+					if (ack == targetACK) {
+						keepSending = false;
+					}
 				}
 				catch (SocketTimeoutException e) {
 					socket.send(outPacket);
