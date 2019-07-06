@@ -88,9 +88,14 @@ public class p2mpserver implements Runnable {
 
     @Override
     public void run() {
-        _printMessage("Listening for connections...\r\n", false);
+
+        // make sure the ./output folder exists...where downloaded files will be
+        if(!createOutputDir()) { return; }
+
+        // create socket
         this.udpSock = createUDPSocket();
         if(this.udpSock == null) { return; }
+        _printMessage("Listening for connections...\r\n", false);
 
         try {
             while(this.runProgram) {
@@ -262,7 +267,7 @@ public class p2mpserver implements Runnable {
     private void writeToFile(byte[] data) {
         try {
             // Initialize a pointer in file using OutputStream
-            String path = System.getProperty("user.dir") + "/" + this.fileName;
+            String path = System.getProperty("user.dir") + "/output/" + this.fileName;
             File file = new File(path);
 
             // append to file
@@ -278,6 +283,24 @@ public class p2mpserver implements Runnable {
            _printError(e.getMessage());
            e.printStackTrace();
         }
+    }
+
+    private boolean createOutputDir() {
+        String path = System.getProperty("user.dir") + "/output/";
+        File outputDir = new File(path);
+        //if directory exists?
+        if (!outputDir.exists()) {
+            if (outputDir.mkdir()) {
+                _printMessage("Successfully created ./output dir", false);
+               return true;
+            } else {
+                _printError("Failed to create ./output di. Stopping server");
+                return false;
+            }
+        }
+
+        // the ./output dir already exists
+        return true;
     }
 
     private int getMSSValue(byte[] data) {
