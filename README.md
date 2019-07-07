@@ -15,6 +15,7 @@
     * [Task 1](#task-1)
     * [Task 2](#task-2)
     * [Task 3](#task-3)
+- [Attribution](#attribution)
     
 
 ## Client
@@ -156,3 +157,8 @@ For each value of p
     - compute the average delay over the five transfers. 
 2. Plot the average delay against p, and submit the plot with your report. 
 Discuss and explain the results and shape of the curve.
+
+
+###### Attribution
+Referenced [Stack Overflow](#https://stackoverflow.com/questions/4113890/how-to-calculate-the-internet-checksum-from-a-byte-in-java)
+ for help on creating udp checksum

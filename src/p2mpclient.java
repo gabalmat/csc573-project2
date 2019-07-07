@@ -67,7 +67,11 @@ public class p2mpclient {
 		try {
             byte[] fileBytes = Files.readAllBytes(file.toPath());
 
+			// measure start time for cumulative time
+			long startCumulativeTime = System.nanoTime();
+
 			while (offset < fileBytes.length) {
+
 				long bytesRemaining = fileBytes.length - offset;
 				int dataLen = (int) Math.min(mss, bytesRemaining);
 				byte[] data = new byte[dataLen];
@@ -78,6 +82,15 @@ public class p2mpclient {
 				
 				offset += dataLen;
 			}
+
+			// measure end for cumulative time
+			long endCumulativeTime = System.nanoTime();
+			long cumulativeTime = (endCumulativeTime - startCumulativeTime) / 1000000;
+
+			// print out cumulative file transfer time
+			System.out.printf("\r\nCumulative time to transfer %s: %d (ms)\r\n",
+					filename, cumulativeTime);
+
 		} catch (IOException e) {
 			System.out.println("Error reading data from file");
 			e.printStackTrace();
