@@ -5,4 +5,4 @@ bin/
 .classpath
 .project
 /output
-sample_file*
+.DS_Store

@@ -157,7 +157,7 @@ public class p2mpserver implements Runnable {
         _printMessage("MSS is: " + mss,false);
 
         // 1. check R value
-        if(!checkR()) { return -1; }
+        if(!checkR(sequenceNum)) { return -1; }
 
         // 2. compute checksum
         int checksum = ByteBuffer.wrap(checksumBytes).getInt();
@@ -312,13 +312,14 @@ public class p2mpserver implements Runnable {
         return data.length - NUM_BYTES_IN_HEADER;
     }
 
-    private boolean checkR() {
+    private boolean checkR(int seqNum) {
         //the server will generate a random number r in (0,1)
         double r = getRandomR();
         if(r <= this.probOfError) {
             // received packet is discarded and no other action is taken
-            _printMessage("checkR() is false...so " +
-                    "client needs to resend segment\r\n", false);
+
+            _printMessage("checkR() [Packet loss, " +
+                    "sequence number = " + seqNum + "]\r\n", false);
             return false;
         }
         return true;

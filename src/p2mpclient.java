@@ -41,10 +41,10 @@ public class p2mpclient {
 //            return;
 //        }
 
-        String[] serverIPs = new String[3];
+        String[] serverIPs = new String[1];
         serverIPs[0] = args[0];
-        serverIPs[1] = args[1];
-        serverIPs[2] = args[2];
+//        serverIPs[1] = args[1];
+//        serverIPs[2] = args[2];
         int port = Integer.parseInt(args[3]);
         String filename = args[4];
         mss = Integer.parseInt(args[5]);
@@ -128,7 +128,8 @@ public class p2mpclient {
 				}
 				catch (SocketTimeoutException e) {
 					socket.send(outPacket);
-					System.out.println("Sent packet again");
+					System.out.println("Sent packet again " +
+							"[Timeout, sequence number = " + sequenceNum + "]");
 					continue;
 				}
 			}
