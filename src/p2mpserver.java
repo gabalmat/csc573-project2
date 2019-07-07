@@ -120,7 +120,7 @@ public class p2mpserver implements Runnable {
                     // send ACK segment
                     udpSock.send(rcvPacket);
 
-                    _printMessage("ACK segment sent\r\n", false);
+                    //_printMessage("ACK segment sent\r\n", false);
                 }
 
                 // clear buffer
@@ -137,7 +137,7 @@ public class p2mpserver implements Runnable {
     }
 
     private int processRequest(byte[] data) {
-        _printMessage("The data size received: " + data.length, false);
+        //_printMessage("The data size received: " + data.length, false);
 
         // Split data into header field portions and data portion
         byte[] sequenceBytes = Arrays.copyOfRange(data, 0, 4);
@@ -153,8 +153,8 @@ public class p2mpserver implements Runnable {
         // Get the sequence number
         int sequenceNum = ByteBuffer.wrap(sequenceBytes).getInt();
         int mss = getMSSValue(data);
-        _printMessage("Seq # " + sequenceNum + " received", false);
-        _printMessage("MSS is: " + mss,false);
+        //_printMessage("Seq # " + sequenceNum + " received", false);
+        //_printMessage("MSS is: " + mss,false);
 
         // 1. check R value
         if(!checkR(sequenceNum)) { return -1; }
@@ -196,7 +196,7 @@ public class p2mpserver implements Runnable {
         bf.putChar((char)ACK_HEADER_FIELD_1);
         bf.putChar((char)ACK_HEADER_FIELD_2);
 
-        _printMessage("ACK # " + seqNum + " created", false);
+        //_printMessage("ACK # " + seqNum + " created", false);
 
         // the ACK header
         return bf.array();
@@ -213,7 +213,7 @@ public class p2mpserver implements Runnable {
         boolean isVerified = (dataSum == 0xFFFF);
 
     	// Add to checksum and return true if result is 1111111111111111
-        _printMessage("verifyChecksum...success? " + isVerified, false);
+        //_printMessage("verifyChecksum...success? " + isVerified, false);
         return isVerified;
     }
 
@@ -247,7 +247,7 @@ public class p2mpserver implements Runnable {
         if(seqNum == this.oldSequenceNum) {
             String msg = "Duplicate Seq # " + seqNum + " received. " +
                     "Resending old ACK # " + lastSeqNum;
-            _printMessage(msg, false);
+            //_printMessage(msg, false);
 
             return lastSeqNum;
         }
@@ -316,8 +316,8 @@ public class p2mpserver implements Runnable {
         if(r <= this.probOfError) {
             // received packet is discarded and no other action is taken
 
-            _printMessage("checkR() [Packet loss, " +
-                    "sequence number = " + seqNum + "]\r\n", false);
+            //_printMessage("checkR() [Packet loss, " +
+                    //"sequence number = " + seqNum + "]\r\n", false);
             return false;
         }
         return true;

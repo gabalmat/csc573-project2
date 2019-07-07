@@ -22,6 +22,7 @@ public class p2mpclient {
 	private static final char DATA_PACKET_VALUE = 0b0101010101010101;
 	private static final int SERVER_PORT_NUMBER = 7735;
 	private static final int SERVER_RESPONSE_BYTES = 8;
+	private static final int DATAGRAM_TIMEOUT_MS = 60;
 	
 	private static int sequenceNum = 0;
 	private static int mss;
@@ -106,8 +107,8 @@ public class p2mpclient {
 		
 		byte[] segmentBytes = bb.array();
 
-		System.out.println("The mss to send: " + data.length);
-		System.out.println();
+		//System.out.println("The mss to send: " + data.length);
+		//System.out.println();
 
 
         // Send data to servers
@@ -120,7 +121,7 @@ public class p2mpclient {
 			DatagramPacket outPacket = new DatagramPacket(segmentBytes, segmentBytes.length,
 					receiverAddress, SERVER_PORT_NUMBER);
 
-			socket.setSoTimeout(500);
+			socket.setSoTimeout(DATAGRAM_TIMEOUT_MS);
 
 			byte[] responseBuf = new byte[SERVER_RESPONSE_BYTES];
 			DatagramPacket responsePacket = new DatagramPacket(responseBuf, responseBuf.length);
@@ -141,13 +142,13 @@ public class p2mpclient {
 				}
 				catch (SocketTimeoutException e) {
 					socket.send(outPacket);
-					System.out.println("Sent packet again " +
-							"[Timeout, sequence number = " + sequenceNum + "]");
+					//System.out.println("Sent packet again " +
+							//"[Timeout, sequence number = " + sequenceNum + "]");
 					continue;
 				}
 			}
 
-			System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
+			//System.out.println("Received " + responsePacket.getLength() + " ACK bytes from server");
 		}
 
 		sequenceNum += data.length;
@@ -172,9 +173,9 @@ public class p2mpclient {
 		bb.putChar(DATA_PACKET_VALUE);
 		
 
-		System.out.println("\r\nSequence Number to send: " + (sequenceNum));
-		System.out.println("Checksum to send: " + Integer.toBinaryString(checksum));
-		System.out.println("Data flag to send: " + Integer.toBinaryString(DATA_PACKET_VALUE));
+		//System.out.println("\r\nSequence Number to send: " + (sequenceNum));
+		//System.out.println("Checksum to send: " + Integer.toBinaryString(checksum));
+		//System.out.println("Data flag to send: " + Integer.toBinaryString(DATA_PACKET_VALUE));
 		
 		return bb.array();
 	}
