@@ -1,5 +1,23 @@
 # CSC 573 Project 2
 
+### Getting Started
+This project was implemented using Java.
+- The p2mpserver and p2mpclient are located in ./src folder in the project.
+
+To download project and build:
+```bash
+$ git clone git@github.com:gabalmat/csc573-project2.git
+$ cd csc573-project2/src
+$ javac p2mpserver.java
+$ javac p2mpclient.java
+```
+
+After building, to run client and server
+```bash
+$ java p2mpserver port# file-name p
+$ java p2mpclient server-1 server-2 server-3 server-port# file-name MSS
+```
+
 ### Table of Contents  
 - [Client](#client)
     * [Command Line Args](#client-command-line-inputs)
