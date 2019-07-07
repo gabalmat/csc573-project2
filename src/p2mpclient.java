@@ -142,8 +142,7 @@ public class p2mpclient {
 				}
 				catch (SocketTimeoutException e) {
 					socket.send(outPacket);
-					//System.out.println("Sent packet again " +
-							//"[Timeout, sequence number = " + sequenceNum + "]");
+					System.out.println("Timeout, sequence number = " + sequenceNum);
 					continue;
 				}
 			}
