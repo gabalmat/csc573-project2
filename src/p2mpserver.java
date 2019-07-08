@@ -316,8 +316,7 @@ public class p2mpserver implements Runnable {
         if(r <= this.probOfError) {
             // received packet is discarded and no other action is taken
 
-            //_printMessage("checkR() [Packet loss, " +
-                    //"sequence number = " + seqNum + "]\r\n", false);
+            _printMessage("Packet loss, sequence number = " + seqNum, false);
             return false;
         }
         return true;
