@@ -30,25 +30,17 @@ public class p2mpclient {
 	
 	public static void main(String[] args) throws IOException {
 
-	    // Verify correct number of arguments
-//        try {
-//            if (args.length != 6) {
-//                throw new IllegalArgumentException("Missing required args: " +
-//                        "server-1, server-2, server-3, port #, file name, MSS");
-//            }
-//        }
-//        catch (IllegalArgumentException e) {
-//            _printError(e.toString());
-//            return;
-//        }
+	    // Parse arguments
 
-        String[] serverIPs = new String[1];
+        String[] serverIPs = new String[5];
         serverIPs[0] = args[0];
-//        serverIPs[1] = args[1];
-//        serverIPs[2] = args[2];
-        int port = Integer.parseInt(args[3]);
-        String filename = args[4];
-        mss = Integer.parseInt(args[5]);
+        serverIPs[1] = args[1];
+        serverIPs[2] = args[2];
+        serverIPs[3] = args[3];
+        serverIPs[4] = args[4];
+        int port = Integer.parseInt(args[5]);
+        String filename = args[6];
+        mss = Integer.parseInt(args[7]);
 
         for (String ip : serverIPs) {
             InetAddress receiverAddress = InetAddress.getByName(ip);
